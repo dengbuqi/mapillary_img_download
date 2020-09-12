@@ -13,6 +13,7 @@ import urllib.request
 import os
 from threading import Thread
 import time
+import numpy as np
 import client_id
 # client_id = '<client_id>'
 # per_page = 1000
@@ -25,7 +26,7 @@ class MapillaryDownload(object):
     # get_sequences_by_username('microsoft', '/home/data/mapillary_seq/', 40000, 1000)
     # per_page max = 1000
     def get_sequences_by_username(self, usernames, foldpath, img_need=5000, per_page=200):
-        url = 'https://a.mapillary.com/v3/sequences?client_id='+client_id+'&per_page='+str(per_page)+'&usernames='+usernames
+        url = 'https://a.mapillary.com/v3/sequences?client_id='+self.client_id+'&per_page='+str(per_page)+'&usernames='+usernames
         image_count = 0
         while url:
             data = urllib.request.urlopen(url)
@@ -39,12 +40,24 @@ class MapillaryDownload(object):
                         with open(foldpath+file_name+'.txt', 'w') as f:
                             json.dump(seq, f)
                             print(file_name)
+                    else:
+                        print(file_name, 'exsisted!')
                 if image_count >= img_need:
                     break
             if image_count >= img_need:
                 break
             url = data.getheader('link').split('<')[-1].split('>')[0]
         print(image_count)
+
+    def download(self, code, count, fdpt):
+        if not os.path.isfile('./'+code+'.jpg'):
+            try:
+                urllib.request.urlretrieve('https://images.mapillary.com/'+code+'/thumb-2048.jpg', fdpt+'/'+code+'.jpg' )
+                print(str(count)+" : "+ code+'.jpg downloaded')
+            except Exception as e:
+                print(e)
+        else:
+            print("img saved")
 
     # file from get_sequences_by_username() function
     def download_from_json_file(self, json_filepath, outfoldpath):
@@ -54,29 +67,18 @@ class MapillaryDownload(object):
         contents = data['properties']['coordinateProperties']['image_keys']
         if not os.path.isdir(fdpt):
             os.mkdir(fdpt)
-            def download(code, count):
-                if not os.path.isfile('./'+code+'.jpg'):
-                    try:
-                        urllib.request.urlretrieve('https://images.mapillary.com/'+code+'/thumb-2048.jpg', fdpt+'/'+code+'.jpg' )
-                        print(str(count)+" : "+ code+'.jpg downloaded')
-                    except Exception as e:
-                        print(e)
-                else:
-                    print("img saved")
-            
             all_num = len(contents)
             start = time.time()
 
             thr_num = 24
 
             times = int(all_num/thr_num + 1)
-
             count = 0
             for i in range(times):
                 start2 = time.time()
                 threads = []
                 for code in contents[i*thr_num:(i+1)*thr_num]:
-                    t = Thread(target = download, args = [code,count])
+                    t = Thread(target = self.download, args = [code,count,fdpt])
                     t.start()
                     threads.append(t)
                     count += 1
@@ -102,13 +104,20 @@ class MapillaryDownload(object):
         # json_foldpath = '/home/deng/data/mapillary_seq/'
         for filepath in glob.glob(json_foldpath+'*.txt'):
             print(filepath)
-            download_from_json_file(filepath, outfoldpath)
+            self.download_from_json_file(filepath, outfoldpath)
 
     # make a split file for Machine Learning training dataset
     # make_split_file(foldpath,split_output)
     # foldpath = '/home/data/mapillary_data/'
     # split_output = './mapillary_split/'
-    def make_split_file(self, foldpath, split_output):
+    # train_percent is a percentage number(0-1]
+    def make_split_file(self, foldpath, split_output, train_percent=1):
+        img_set = []
+        if train_percent > 1:
+            train_percent = 1
+        elif train_percent < 0:
+            train_percent = 0
+
         for fold in glob.glob(foldpath+'/*'):
             path_num = len(glob.glob(fold+'/*'))
             for path in glob.glob(fold+'/*'):
@@ -116,13 +125,25 @@ class MapillaryDownload(object):
                 fp = tp[0]
                 frame_num = str(int(tp[1].split('.')[0]))
                 if frame_num != '0' and frame_num != str(path_num-1):
-                    with open(split_output+'train_files.txt', 'a') as f:
-                        f.write(fp+' '+frame_num + ' r' +'\n')
+                    img_set.append(fp+' '+frame_num + ' r' +'\n')
+                    
+        print('output number: ',int(len(img_set)*train_percent))
+        restults = np.random.choice(img_set, int(len(img_set)*train_percent), replace=False)
+        with open(split_output+'train_files.txt', 'a') as f:
+            for restult in restults:
+                f.write(restult)
+
 
 
 
 if __name__ == "__main__":
     md = MapillaryDownload(client_id.client_id)
-    md.get_sequences_by_username('microsoft', '/home/data/mapillary_seq/', 40000, 1000)
+    
+    print('get_sequences_by_username')
+    md.get_sequences_by_username('microsoft', '/home/data/mapillary_seq/', 41000, 1000)
+    
+    print('download_from_json_fold')
     md.download_from_json_fold('/home/deng/data/mapillary_seq/', '/home/deng/data/mapillary_data/')
-    md.make_split_file('/home/data/mapillary_data/', '../mapillary_split/')
+    
+    print('make_split_file')
+    md.make_split_file('/home/data/mapillary_data/', '../mapillary_split/', 5000/40000)
