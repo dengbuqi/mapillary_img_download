@@ -133,17 +133,16 @@ class MapillaryDownload(object):
             for restult in restults:
                 f.write(restult)
 
-
-
-
 if __name__ == "__main__":
     md = MapillaryDownload(client_id.client_id)
     
-    print('get_sequences_by_username')
-    md.get_sequences_by_username('microsoft', '/home/data/mapillary_seq/', 41000, 1000)
+    # print('get_sequences_by_username')
+    # md.get_sequences_by_username('microsoft', '/home/data/mapillary_seq/', 41000, 1000)
     
-    print('download_from_json_fold')
-    md.download_from_json_fold('/home/deng/data/mapillary_seq/', '/home/deng/data/mapillary_data/')
+    # print('download_from_json_fold')
+    # md.download_from_json_fold('/home/deng/data/mapillary_seq/', '/home/deng/data/mapillary_data/')
     
-    print('make_split_file')
-    md.make_split_file('/home/data/mapillary_data/', '../mapillary_split/', 5000/40000)
+    # md.download_from_json_file('/home/data/mapillary_seq/fFLmvZV2G5LILt3_Ad7oDA.txt', '/home/deng/data/mapillary_data/')
+
+    # print('make_split_file')
+    # md.make_split_file('/home/data/mapillary_data/', '../mapillary_split/', 5200/40000)
